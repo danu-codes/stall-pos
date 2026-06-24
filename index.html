@@ -210,6 +210,24 @@
   }
   .section-head .page-title { margin-bottom: 0; }
 
+  /* Search bar */
+  .search-wrap {
+    position: relative;
+    margin-bottom: 1.25rem;
+  }
+  .search-wrap i {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 17px;
+    color: var(--text-hint);
+    pointer-events: none;
+  }
+  .search-wrap input {
+    padding-left: 36px !important;
+  }
+
   /* Product grid */
   .product-grid {
     display: grid;
@@ -254,6 +272,13 @@
     border: 0.5px solid var(--border);
   }
   .stock-badge.out { color: var(--red); background: var(--red-bg); }
+
+  /* Product card action row */
+  .product-card-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .product-card-actions .btn { flex: 1; }
 
   /* POS layout */
   .pos-layout {
@@ -389,10 +414,102 @@
     font-size: 14px;
     opacity: 0;
     transition: transform .25s, opacity .25s;
-    z-index: 999;
+    z-index: 9999;
     pointer-events: none;
   }
   #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+  /* ── Modal ── */
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.38);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    width: 100%;
+    max-width: 520px;
+    margin: 1rem;
+    overflow: hidden;
+  }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .modal-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .modal-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-hint);
+    font-size: 20px;
+    padding: 2px 5px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    transition: color .12s, background .12s;
+  }
+  .modal-close:hover { color: var(--text-primary); background: var(--bg-muted); }
+  .modal-body { padding: 1.25rem; }
+  .modal-footer {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding: 1rem 1.25rem;
+    border-top: 0.5px solid var(--border);
+    background: var(--bg-muted);
+  }
+
+  /* Image preview in modal */
+  .img-preview-wrap {
+    width: 100%;
+    height: 140px;
+    border: 0.5px dashed var(--border-md);
+    border-radius: var(--radius-md);
+    background: var(--bg-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color .12s;
+  }
+  .img-preview-wrap:hover { border-color: var(--blue); }
+  .img-preview-wrap img { width: 100%; height: 100%; object-fit: cover; }
+  .img-preview-wrap .img-placeholder-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-hint);
+    font-size: 13px;
+  }
+  .img-preview-wrap .img-placeholder-inner i { font-size: 30px; }
+
+  /* DB status */
+  #dbStatus {
+    font-size: 12px;
+    color: var(--text-hint);
+    text-align: right;
+    margin-bottom: .5rem;
+  }
+  #dbStatus.ready { color: var(--green); }
+  #dbStatus.error { color: var(--red); }
 
   /* Responsive */
   @media (max-width: 700px) {
@@ -409,6 +526,57 @@
 <body>
 
 <div id="toast"></div>
+
+<!-- Edit Product Modal -->
+<div id="editModal" class="modal-backdrop" onclick="closeEditModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Edit product</span>
+      <button class="modal-close" onclick="closeEditModalDirect()"><i class="ti ti-x"></i></button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editId">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="form-group" style="grid-column:1/-1">
+          <label for="editName">Product name</label>
+          <input type="text" id="editName" placeholder="e.g. Fried rice">
+        </div>
+        <div class="form-group">
+          <label for="editPrice">Price (Rs)</label>
+          <input type="number" id="editPrice" placeholder="0" min="0">
+        </div>
+        <div class="form-group">
+          <label for="editQty">Stock quantity</label>
+          <input type="number" id="editQty" placeholder="0" min="0">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Product image <span style="color:var(--text-hint);font-weight:400">(optional — click to change)</span></label>
+          <div class="img-preview-wrap" id="editImgPreview" onclick="document.getElementById('editImg').click()">
+            <div class="img-placeholder-inner">
+              <i class="ti ti-photo"></i>
+              <span>Click to upload image</span>
+            </div>
+          </div>
+          <input type="file" id="editImg" accept="image/*" style="display:none" onchange="previewEditImg(this)">
+          <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+            <button class="btn btn-sm" onclick="document.getElementById('editImg').click()">
+              <i class="ti ti-upload"></i>Change image
+            </button>
+            <button class="btn btn-sm btn-danger" id="editRemoveImgBtn" onclick="clearEditImg()" style="display:none">
+              <i class="ti ti-photo-off"></i>Remove image
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeEditModalDirect()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditProduct()">
+        <i class="ti ti-check"></i>Save changes
+      </button>
+    </div>
+  </div>
+</div>
 
 <header>
   <div class="logo">
@@ -466,6 +634,7 @@
     <div class="section-head">
       <p class="page-title">Products</p>
     </div>
+    <div id="dbStatus">Connecting to database…</div>
     <div class="card" style="margin-bottom:1.5rem">
       <p class="card-title">Add new product</p>
       <div class="form-grid">
@@ -482,7 +651,7 @@
           <input type="number" id="pqty" placeholder="0" min="0">
         </div>
         <div class="form-group">
-          <label for="pimg">Product image</label>
+          <label for="pimg">Product image <span style="color:var(--text-hint);font-weight:400">(optional)</span></label>
           <input type="file" id="pimg" accept="image/*">
         </div>
       </div>
@@ -490,6 +659,12 @@
         <i class="ti ti-plus" aria-hidden="true"></i>Add product
       </button>
     </div>
+
+    <div class="search-wrap">
+      <i class="ti ti-search"></i>
+      <input type="text" id="productSearch" placeholder="Search products…" oninput="renderProducts()" style="width:100%">
+    </div>
+
     <div id="productList" class="product-grid"></div>
   </div>
 
@@ -498,7 +673,10 @@
     <p class="page-title">Point of sale</p>
     <div class="pos-layout">
       <div>
-        <p class="pos-hint">Tap a product to add it to the cart</p>
+        <div class="search-wrap">
+          <i class="ti ti-search"></i>
+          <input type="text" id="posSearch" placeholder="Search products…" oninput="renderPosProducts()" style="width:100%">
+        </div>
         <div id="posProducts" class="product-grid"></div>
       </div>
       <div class="cart-section">
@@ -513,7 +691,7 @@
         <div class="cart-divider"></div>
         <div class="cart-total">
           <span class="cart-total-label">Total</span>
-          <span class="cart-total-val">Rs <span id="cartTotal">0</span></span>
+          <span class="cart-total-val">Rs <span id="cartTotal">0.00</span></span>
         </div>
         <button class="btn btn-success btn-block" onclick="generateBill()">
           <i class="ti ti-file-invoice" aria-hidden="true"></i>Generate bill PDF
@@ -542,87 +720,169 @@
 </main>
 
 <script>
-  /* ── State ── */
-  let products = JSON.parse(localStorage.getItem("upos_products") || "[]");
-  let sales    = JSON.parse(localStorage.getItem("upos_sales")    || "[]");
-  let cart     = [];
+/* ══════════════════════════════════════════════
+   IndexedDB setup
+   DB: upos_db  v1
+   Stores:
+     products  – keyPath: id  (auto-incremented or Date.now())
+     sales     – keyPath: billNo
+   Images are stored as ArrayBuffer inside the product record.
+   ══════════════════════════════════════════════ */
 
-  const STALL_NAME    = "University Stall";
-  const STALL_ADDRESS = "Faculty of Technology, USJP";
-  const STALL_PHONE   = "011-2-XXXXXXX";
+const DB_NAME    = 'upos_db';
+const DB_VERSION = 1;
+let   db         = null;
 
-  /* ── Helpers ── */
-  function saveStorage() {
-    localStorage.setItem("upos_products", JSON.stringify(products));
-    localStorage.setItem("upos_sales",    JSON.stringify(sales));
-  }
-
-  function showToast(msg) {
-    let t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2200);
-  }
-
-  function pad(n, w) { return String(n).padStart(w, '0'); }
-
-  function fmtMoney(n) { return 'Rs ' + n.toFixed(2); }
-
-  /* ── Navigation ── */
-  function showTab(id, btn) {
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-    btn.classList.add('active');
-  }
-
-  /* ── Products ── */
-  function saveProduct() {
-    let name  = document.getElementById('pname').value.trim();
-    let price = parseFloat(document.getElementById('pprice').value);
-    let qty   = parseInt(document.getElementById('pqty').value, 10);
-    let file  = document.getElementById('pimg').files[0];
-    if (!name)          { alert("Enter a product name."); return; }
-    if (!price || price <= 0) { alert("Enter a valid price."); return; }
-    if (!qty   || qty   <= 0) { alert("Enter a valid quantity."); return; }
-    if (!file)          { alert("Select a product image."); return; }
-    let r = new FileReader();
-    r.onload = function () {
-      products.push({ id: Date.now(), name, price, qty, image: r.result });
-      saveStorage();
-      renderProducts();
-      document.getElementById('pname').value  = '';
-      document.getElementById('pprice').value = '';
-      document.getElementById('pqty').value   = '';
-      document.getElementById('pimg').value   = '';
-      showToast(name + ' added.');
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('products')) {
+        d.createObjectStore('products', { keyPath: 'id' });
+      }
+      if (!d.objectStoreNames.contains('sales')) {
+        d.createObjectStore('sales', { keyPath: 'billNo' });
+      }
     };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+function idbGetAll(storeName) {
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(storeName, 'readonly');
+    const req = tx.objectStore(storeName).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+function idbPut(storeName, record) {
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(storeName, 'readwrite');
+    const req = tx.objectStore(storeName).put(record);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+function idbDelete(storeName, key) {
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(storeName, 'readwrite');
+    const req = tx.objectStore(storeName).delete(key);
+    req.onsuccess = () => resolve();
+    req.onerror   = () => reject(req.error);
+  });
+}
+
+/* ══════════════════════════════════════════════
+   State
+   ══════════════════════════════════════════════ */
+let products = [];   // array of product objects (image stored as dataURL string)
+let sales    = [];   // array of sale objects
+let cart     = [];
+
+const STALL_NAME    = "University Stall";
+const STALL_ADDRESS = "Faculty of Technology, USJP";
+const STALL_PHONE   = "011-2-XXXXXXX";
+
+/* ══════════════════════════════════════════════
+   Helpers
+   ══════════════════════════════════════════════ */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function pad(n, w) { return String(n).padStart(w, '0'); }
+function fmtMoney(n) { return 'Rs ' + Number(n).toFixed(2); }
+
+function setDbStatus(state, msg) {
+  const el = document.getElementById('dbStatus');
+  el.textContent = msg;
+  el.className = state; // 'ready' | 'error' | ''
+}
+
+/* ══════════════════════════════════════════════
+   Navigation
+   ══════════════════════════════════════════════ */
+function showTab(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'pos') renderPosProducts();
+}
+
+/* ══════════════════════════════════════════════
+   File → dataURL helper
+   ══════════════════════════════════════════════ */
+function fileToDataURL(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) { resolve(null); return; }
+    const r = new FileReader();
+    r.onload  = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
     r.readAsDataURL(file);
-  }
+  });
+}
 
-  function renderProducts() {
-    let pl = document.getElementById('productList');
-    let pp = document.getElementById('posProducts');
-    pl.innerHTML = '';
-    pp.innerHTML = '';
+/* ══════════════════════════════════════════════
+   Products — Add
+   ══════════════════════════════════════════════ */
+async function saveProduct() {
+  const name  = document.getElementById('pname').value.trim();
+  const price = parseFloat(document.getElementById('pprice').value);
+  const qty   = parseInt(document.getElementById('pqty').value, 10);
+  const file  = document.getElementById('pimg').files[0];
 
-    if (products.length === 0) {
-      pl.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="ti ti-package-off"></i>No products yet. Add one above.</div>';
-      pp.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="ti ti-package-off"></i>No products added yet.</div>';
-    }
+  if (!name)               { alert("Enter a product name."); return; }
+  if (!price || price <= 0){ alert("Enter a valid price."); return; }
+  if (isNaN(qty) || qty < 0){ alert("Enter a valid quantity."); return; }
 
-    products.forEach(p => {
-      let img = p.image
+  const image = file ? await fileToDataURL(file) : null;
+
+  const product = { id: Date.now(), name, price, qty, image };
+  await idbPut('products', product);
+  products.push(product);
+
+  document.getElementById('pname').value  = '';
+  document.getElementById('pprice').value = '';
+  document.getElementById('pqty').value   = '';
+  document.getElementById('pimg').value   = '';
+
+  renderProducts();
+  showToast(name + ' added.');
+}
+
+/* ══════════════════════════════════════════════
+   Products — Render (with search)
+   ══════════════════════════════════════════════ */
+function renderProducts() {
+  const query = (document.getElementById('productSearch')?.value || '').toLowerCase().trim();
+  const list  = query
+    ? products.filter(p => p.name.toLowerCase().includes(query))
+    : products;
+
+  const pl = document.getElementById('productList');
+  pl.innerHTML = '';
+
+  if (products.length === 0) {
+    pl.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="ti ti-package-off"></i>No products yet. Add one above.</div>';
+  } else if (list.length === 0) {
+    pl.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="ti ti-search-off"></i>No products match your search.</div>';
+  } else {
+    list.forEach(p => {
+      const img = p.image
         ? `<img src="${p.image}" alt="${p.name}">`
         : `<div class="product-img-placeholder"><i class="ti ti-photo"></i></div>`;
-
-      let stockBadge = p.qty > 0
+      const stockBadge = p.qty > 0
         ? `<span class="stock-badge">${p.qty} left</span>`
         : `<span class="stock-badge out">Out of stock</span>`;
-
-      let addBtn = p.qty > 0
-        ? `<button class="btn btn-primary btn-sm btn-block" onclick="addToCart(${p.id})"><i class="ti ti-plus" aria-hidden="true"></i>Add to cart</button>`
-        : `<button class="btn btn-sm btn-block" disabled style="opacity:.45;cursor:not-allowed"><i class="ti ti-ban" aria-hidden="true"></i>Out of stock</button>`;
 
       pl.innerHTML += `
         <div class="product-card">
@@ -633,431 +893,534 @@
               <span class="price-tag">${fmtMoney(p.price)}</span>
               ${stockBadge}
             </div>
-            <button class="btn btn-danger btn-sm btn-block" onclick="deleteProduct(${p.id})">
-              <i class="ti ti-trash" aria-hidden="true"></i>Remove
+            <div class="product-card-actions">
+              <button class="btn btn-sm" onclick="openEditModal(${p.id})">
+                <i class="ti ti-pencil" aria-hidden="true"></i>Edit
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.id})">
+                <i class="ti ti-trash" aria-hidden="true"></i>Remove
+              </button>
+            </div>
+          </div>
+        </div>`;
+    });
+  }
+
+  document.getElementById('totalProducts').textContent = products.length;
+  updateDashboard();
+}
+
+/* ══════════════════════════════════════════════
+   Products — Delete
+   ══════════════════════════════════════════════ */
+async function deleteProduct(id) {
+  const p = products.find(x => x.id === id);
+  if (!p || !confirm('Delete "' + p.name + '"?')) return;
+  await idbDelete('products', id);
+  products = products.filter(x => x.id !== id);
+  cart     = cart.filter(x => x.id !== id);
+  renderProducts();
+  renderCart();
+  showToast('"' + p.name + '" removed.');
+}
+
+/* ══════════════════════════════════════════════
+   Edit Modal
+   ══════════════════════════════════════════════ */
+let editImgDataURL = undefined; // undefined = unchanged, null = cleared, string = new
+
+function openEditModal(id) {
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('editId').value    = id;
+  document.getElementById('editName').value  = p.name;
+  document.getElementById('editPrice').value = p.price;
+  document.getElementById('editQty').value   = p.qty;
+  document.getElementById('editImg').value   = '';
+  editImgDataURL = undefined; // unchanged by default
+
+  // preview
+  const preview = document.getElementById('editImgPreview');
+  const removeBtn = document.getElementById('editRemoveImgBtn');
+  if (p.image) {
+    preview.innerHTML = `<img src="${p.image}" alt="${p.name}">`;
+    removeBtn.style.display = '';
+  } else {
+    preview.innerHTML = `<div class="img-placeholder-inner"><i class="ti ti-photo"></i><span>Click to upload image</span></div>`;
+    removeBtn.style.display = 'none';
+  }
+
+  document.getElementById('editModal').classList.add('open');
+}
+
+function closeEditModal(e) {
+  if (e.target === document.getElementById('editModal')) closeEditModalDirect();
+}
+function closeEditModalDirect() {
+  document.getElementById('editModal').classList.remove('open');
+}
+
+function previewEditImg(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function() {
+    editImgDataURL = reader.result;
+    const preview = document.getElementById('editImgPreview');
+    preview.innerHTML = `<img src="${editImgDataURL}" alt="preview">`;
+    document.getElementById('editRemoveImgBtn').style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearEditImg() {
+  editImgDataURL = null; // will be cleared on save
+  const preview = document.getElementById('editImgPreview');
+  preview.innerHTML = `<div class="img-placeholder-inner"><i class="ti ti-photo"></i><span>Click to upload image</span></div>`;
+  document.getElementById('editRemoveImgBtn').style.display = 'none';
+  document.getElementById('editImg').value = '';
+}
+
+async function saveEditProduct() {
+  const id    = parseInt(document.getElementById('editId').value);
+  const name  = document.getElementById('editName').value.trim();
+  const price = parseFloat(document.getElementById('editPrice').value);
+  const qty   = parseInt(document.getElementById('editQty').value, 10);
+
+  if (!name)               { alert("Enter a product name."); return; }
+  if (!price || price <= 0){ alert("Enter a valid price."); return; }
+  if (isNaN(qty) || qty < 0){ alert("Enter a valid quantity."); return; }
+
+  const p = products.find(x => x.id === id);
+  if (!p) return;
+
+  p.name  = name;
+  p.price = price;
+  p.qty   = qty;
+
+  if (editImgDataURL === null) {
+    p.image = null;  // removed
+  } else if (editImgDataURL !== undefined) {
+    p.image = editImgDataURL; // new image
+  }
+  // else: unchanged
+
+  await idbPut('products', p);
+
+  // Update cart if product is in cart
+  const cartItem = cart.find(x => x.id === id);
+  if (cartItem) {
+    cartItem.name  = name;
+    cartItem.price = price;
+    if (cartItem.qty > qty) cartItem.qty = qty;
+  }
+
+  renderProducts();
+  renderCart();
+  closeEditModalDirect();
+  showToast('"' + name + '" updated.');
+}
+
+/* ══════════════════════════════════════════════
+   POS — Render (with search)
+   ══════════════════════════════════════════════ */
+function renderPosProducts() {
+  const query = (document.getElementById('posSearch')?.value || '').toLowerCase().trim();
+  const list  = query
+    ? products.filter(p => p.name.toLowerCase().includes(query))
+    : products;
+
+  const pp = document.getElementById('posProducts');
+  pp.innerHTML = '';
+
+  if (products.length === 0) {
+    pp.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="ti ti-package-off"></i>No products added yet.</div>';
+    return;
+  }
+  if (list.length === 0) {
+    pp.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><i class="ti ti-search-off"></i>No products match your search.</div>';
+    return;
+  }
+
+  list.forEach(p => {
+    const img = p.image
+      ? `<img src="${p.image}" alt="${p.name}">`
+      : `<div class="product-img-placeholder"><i class="ti ti-photo"></i></div>`;
+    const stockBadge = p.qty > 0
+      ? `<span class="stock-badge">${p.qty} left</span>`
+      : `<span class="stock-badge out">Out of stock</span>`;
+    const addBtn = p.qty > 0
+      ? `<button class="btn btn-primary btn-sm btn-block" onclick="addToCart(${p.id})"><i class="ti ti-plus" aria-hidden="true"></i>Add to cart</button>`
+      : `<button class="btn btn-sm btn-block" disabled style="opacity:.45;cursor:not-allowed"><i class="ti ti-ban" aria-hidden="true"></i>Out of stock</button>`;
+
+    pp.innerHTML += `
+      <div class="product-card">
+        ${img}
+        <div class="product-card-body">
+          <div class="product-name">${p.name}</div>
+          <div class="product-meta">
+            <span class="price-tag">${fmtMoney(p.price)}</span>
+            ${stockBadge}
+          </div>
+          ${addBtn}
+        </div>
+      </div>`;
+  });
+}
+
+/* ══════════════════════════════════════════════
+   Cart
+   ══════════════════════════════════════════════ */
+function addToCart(id) {
+  const p = products.find(x => x.id === id);
+  if (!p || p.qty <= 0) { showToast('Out of stock.'); return; }
+  const c = cart.find(x => x.id === id);
+  if (c) {
+    if (c.qty >= p.qty) { showToast('No more stock available.'); return; }
+    c.qty++;
+  } else {
+    cart.push({ id: p.id, name: p.name, price: p.price, qty: 1 });
+  }
+  showToast(p.name + ' added to cart.');
+  renderCart();
+}
+
+function changeCartQty(id, delta) {
+  const c = cart.find(x => x.id === id);
+  if (!c) return;
+  const p = products.find(x => x.id === id);
+  const newQty = c.qty + delta;
+  if (newQty <= 0) {
+    cart = cart.filter(x => x.id !== id);
+  } else {
+    if (p && newQty > p.qty) { showToast('No more stock available.'); return; }
+    c.qty = newQty;
+  }
+  renderCart();
+}
+
+function removeFromCart(id) {
+  cart = cart.filter(x => x.id !== id);
+  renderCart();
+}
+
+function renderCart() {
+  const ci    = document.getElementById('cartItems');
+  const total = cart.reduce((a, c) => a + c.price * c.qty, 0);
+
+  if (cart.length === 0) {
+    ci.innerHTML = '<div class="cart-empty"><i class="ti ti-shopping-cart-off"></i>Cart is empty</div>';
+  } else {
+    ci.innerHTML = cart.map(c => {
+      const amt = c.price * c.qty;
+      return `
+        <div class="cart-item">
+          <div style="flex:1;min-width:0">
+            <div class="cart-item-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}</div>
+            <div class="cart-item-price">${fmtMoney(c.price)} each</div>
+          </div>
+          <div class="cart-item-right">
+            <div class="qty-stepper">
+              <button class="qty-btn" onclick="changeCartQty(${c.id},-1)">-</button>
+              <span class="qty-num">${c.qty}</span>
+              <button class="qty-btn" onclick="changeCartQty(${c.id},1)">+</button>
+            </div>
+            <span class="cart-item-amt">${fmtMoney(amt)}</span>
+            <button class="cart-remove" onclick="removeFromCart(${c.id})" aria-label="Remove">
+              <i class="ti ti-trash" aria-hidden="true"></i>
             </button>
           </div>
         </div>`;
-
-      pp.innerHTML += `
-        <div class="product-card">
-          ${img}
-          <div class="product-card-body">
-            <div class="product-name">${p.name}</div>
-            <div class="product-meta">
-              <span class="price-tag">${fmtMoney(p.price)}</span>
-              ${stockBadge}
-            </div>
-            ${addBtn}
-          </div>
-        </div>`;
-    });
-
-    document.getElementById('totalProducts').textContent = products.length;
-    updateDashboard();
+    }).join('');
   }
 
-  function deleteProduct(id) {
-    let p = products.find(x => x.id === id);
-    if (!confirm('Delete "' + p.name + '"?')) return;
-    products = products.filter(x => x.id !== id);
-    // also remove from cart if present
-    cart = cart.filter(x => x.id !== id);
-    saveStorage();
-    renderProducts();
-    renderCart();
+  document.getElementById('cartTotal').textContent = total.toFixed(2);
+}
+
+/* ══════════════════════════════════════════════
+   Bill PDF
+   ══════════════════════════════════════════════ */
+async function generateBill() {
+  if (cart.length === 0) { alert("Cart is empty."); return; }
+  const { jsPDF } = window.jspdf;
+
+  // Deduct stock
+  cart.forEach(c => {
+    const p = products.find(x => x.id === c.id);
+    if (p) p.qty = Math.max(0, p.qty - c.qty);
+  });
+  // Save updated stock to IDB
+  await Promise.all(products.map(p => idbPut('products', p)));
+
+  const now      = new Date();
+  const billNo   = 'B' + pad(sales.length + 1, 5);
+  const dateStr  = now.toLocaleDateString('en-LK', { year:'numeric', month:'short', day:'2-digit' });
+  const timeStr  = now.toLocaleTimeString('en-LK', { hour:'2-digit', minute:'2-digit' });
+  const subtotal = cart.reduce((a, c) => a + c.price * c.qty, 0);
+  const total    = subtotal;
+
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pw  = doc.internal.pageSize.getWidth();
+  const ph  = doc.internal.pageSize.getHeight();
+  const lm  = 60, rm = pw - 60, cw = rm - lm;
+  let y = 60;
+
+  function checkPage() {
+    if (y > ph - 80) { doc.addPage(); y = 60; }
+  }
+  function hRule(thickness) {
+    doc.setLineWidth(thickness || 0.5);
+    doc.line(lm, y, rm, y);
+    y += 6;
+  }
+  function dottedRule() {
+    doc.setLineDash([3, 4]);
+    doc.setLineWidth(0.4);
+    doc.line(lm, y, rm, y);
+    doc.setLineDash([]);
+    y += 6;
   }
 
-  /* ── Cart ── */
-  function addToCart(id) {
-    let p = products.find(x => x.id === id);
-    if (!p || p.qty <= 0) { showToast('Out of stock.'); return; }
-    let c = cart.find(x => x.id === id);
-    if (c) {
-      // FIX: cap at available stock
-      if (c.qty >= p.qty) { showToast('No more stock available.'); return; }
-      c.qty++;
-    } else {
-      cart.push({ id: p.id, name: p.name, price: p.price, qty: 1 });
-    }
-    showToast(p.name + ' added to cart.');
-    renderCart();
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text(STALL_NAME, pw / 2, y, { align: 'center' }); y += 20;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  doc.text(STALL_ADDRESS, pw / 2, y, { align: 'center' }); y += 13;
+  doc.text('Tel: ' + STALL_PHONE, pw / 2, y, { align: 'center' }); y += 16;
+  doc.setTextColor(0);
+  hRule(0.8); y += 2;
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('RECEIPT', lm, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(billNo, pw / 2, y, { align: 'center' });
+  doc.text(dateStr + '  ' + timeStr, rm, y, { align: 'right' });
+  y += 14;
+  dottedRule(); y += 2;
+
+  const col = { item: lm, qty: lm + cw * 0.52, rate: lm + cw * 0.67, amt: rm };
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(80);
+  doc.text('ITEM', col.item, y);
+  doc.text('QTY',  col.qty,  y);
+  doc.text('UNIT PRICE', col.rate, y);
+  doc.text('AMOUNT', col.amt, y, { align: 'right' });
+  y += 5;
+  doc.setTextColor(0);
+  hRule(0.4); y += 2;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  cart.forEach(c => {
+    checkPage();
+    const amt   = c.price * c.qty;
+    const lines = doc.splitTextToSize(c.name, cw * 0.48);
+    doc.text(lines,              col.item, y);
+    doc.text(String(c.qty),      col.qty,  y);
+    doc.text(c.price.toFixed(2), col.rate, y);
+    doc.text(amt.toFixed(2),     col.amt,  y, { align: 'right' });
+    y += lines.length * 13;
+  });
+
+  y += 4; dottedRule(); y += 4;
+  const totLabelX = lm + cw * 0.55, totValX = rm;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Subtotal',           totLabelX, y);
+  doc.text(subtotal.toFixed(2),  totValX,   y, { align: 'right' }); y += 14;
+  doc.text('Discount',           totLabelX, y);
+  doc.text('0.00',               totValX,   y, { align: 'right' }); y += 14;
+  hRule(0.5); y += 2;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('TOTAL (Rs)', totLabelX, y);
+  doc.text(total.toFixed(2), totValX, y, { align: 'right' }); y += 18;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(80);
+  const totalUnits = cart.reduce((a, c) => a + c.qty, 0);
+  doc.text('Items sold: ' + cart.length + ' types  |  ' + totalUnits + ' units', lm, y); y += 14;
+  doc.setTextColor(0);
+  hRule(0.8); y += 6;
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  doc.text('Thank you for your purchase!', pw / 2, y, { align: 'center' }); y += 13;
+  doc.text('Please keep this receipt for your records.', pw / 2, y, { align: 'center' }); y += 13;
+  doc.text('- ' + STALL_NAME + ' -', pw / 2, y, { align: 'center' });
+  doc.setTextColor(0);
+
+  const saleRecord = { billNo, date: dateStr + ' ' + timeStr, total: parseFloat(total.toFixed(2)), items: cart.length, totalUnits };
+  sales.push(saleRecord);
+  await idbPut('sales', saleRecord);
+
+  doc.save(billNo + '.pdf');
+  cart = [];
+  renderCart();
+  renderPosProducts();
+  renderSales();
+  updateDashboard();
+  showToast('Bill ' + billNo + ' generated.');
+}
+
+/* ══════════════════════════════════════════════
+   Sales
+   ══════════════════════════════════════════════ */
+function renderSales() {
+  const wrap = document.getElementById('salesTableWrap');
+  if (sales.length === 0) {
+    wrap.innerHTML = '<div class="empty-state"><i class="ti ti-chart-bar-off"></i>No sales recorded yet</div>';
+    return;
   }
+  const rows = [...sales].reverse().map(s => `
+    <tr>
+      <td style="font-weight:600">${s.billNo}</td>
+      <td>${s.date}</td>
+      <td style="text-align:center">${s.totalUnits || s.items || '-'}</td>
+      <td style="font-weight:600;color:var(--blue)">${fmtMoney(s.total)}</td>
+    </tr>`).join('');
+  wrap.innerHTML = `
+    <table>
+      <thead><tr><th>Bill no.</th><th>Date &amp; time</th><th>Units sold</th><th>Amount</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
 
-  function changeCartQty(id, delta) {
-    let c = cart.find(x => x.id === id);
-    if (!c) return;
-    let p = products.find(x => x.id === id);
-    let newQty = c.qty + delta;
-    if (newQty <= 0) {
-      cart = cart.filter(x => x.id !== id);
-    } else {
-      // FIX: cap at stock
-      if (p && newQty > p.qty) { showToast('No more stock available.'); return; }
-      c.qty = newQty;
-    }
-    renderCart();
+/* ══════════════════════════════════════════════
+   Sales report PDF
+   ══════════════════════════════════════════════ */
+function downloadSalesReport() {
+  if (sales.length === 0) { alert("No sales to export."); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pw  = doc.internal.pageSize.getWidth();
+  const ph  = doc.internal.pageSize.getHeight();
+  const lm  = 50, rm = pw - 50;
+  let y = 60;
+
+  function checkPage() {
+    if (y > ph - 60) { doc.addPage(); y = 60; drawTableHeader(); }
   }
-
-  function renderCart() {
-    let ci    = document.getElementById('cartItems');
-    let total = cart.reduce((a, c) => a + c.price * c.qty, 0);
-
-    if (cart.length === 0) {
-      ci.innerHTML = '<div class="cart-empty"><i class="ti ti-shopping-cart-off"></i>Cart is empty</div>';
-    } else {
-      ci.innerHTML = cart.map(c => {
-        let amt = c.price * c.qty;
-        return `
-          <div class="cart-item">
-            <div style="flex:1;min-width:0">
-              <div class="cart-item-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.name}</div>
-              <div class="cart-item-price">${fmtMoney(c.price)} each</div>
-            </div>
-            <div class="cart-item-right">
-              <div class="qty-stepper">
-                <button class="qty-btn" onclick="changeCartQty(${c.id},-1)">-</button>
-                <span class="qty-num">${c.qty}</span>
-                <button class="qty-btn" onclick="changeCartQty(${c.id},1)">+</button>
-              </div>
-              <span class="cart-item-amt">${fmtMoney(amt)}</span>
-              <button class="cart-remove" onclick="removeFromCart(${c.id})" aria-label="Remove">
-                <i class="ti ti-trash" aria-hidden="true"></i>
-              </button>
-            </div>
-          </div>`;
-      }).join('');
-    }
-
-    document.getElementById('cartTotal').textContent = total.toFixed(2);
-  }
-
-  function removeFromCart(id) {
-    cart = cart.filter(x => x.id !== id);
-    renderCart();
-  }
-
-  /* ── Bill PDF ── */
-  function generateBill() {
-    if (cart.length === 0) { alert("Cart is empty."); return; }
-    const { jsPDF } = window.jspdf;
-
-    // FIX: deduct stock from products
-    cart.forEach(c => {
-      let p = products.find(x => x.id === c.id);
-      if (p) p.qty = Math.max(0, p.qty - c.qty);
-    });
-    saveStorage();
-
-    // Build bill data
-    let now     = new Date();
-    let billNo  = 'B' + pad(sales.length + 1, 5);
-    let dateStr = now.toLocaleDateString('en-LK', { year:'numeric', month:'short', day:'2-digit' });
-    let timeStr = now.toLocaleTimeString('en-LK', { hour:'2-digit', minute:'2-digit' });
-    let subtotal = cart.reduce((a, c) => a + c.price * c.qty, 0);
-    let total    = subtotal; // extend here for tax/discount if needed
-
-    // ── jsPDF thermal-style receipt (80mm width = ~226pt, use A4 portrait) ──
-    let doc    = new jsPDF({ unit: 'pt', format: 'a4' });
-    let pw     = doc.internal.pageSize.getWidth();   // 595 pt
-    let ph     = doc.internal.pageSize.getHeight();  // 842 pt
-    let lm     = 60;   // left margin
-    let rm     = pw - 60; // right margin
-    let cw     = rm - lm; // content width
-    let y      = 60;
-
-    // helper: add page if near bottom
-    function checkPage() {
-      if (y > ph - 80) {
-        doc.addPage();
-        y = 60;
-      }
-    }
-
-    // helper: horizontal rule
-    function hRule(thickness) {
-      doc.setLineWidth(thickness || 0.5);
-      doc.line(lm, y, rm, y);
-      y += 6;
-    }
-    function dottedRule() {
-      doc.setLineDash([3, 4]);
-      doc.setLineWidth(0.4);
-      doc.line(lm, y, rm, y);
-      doc.setLineDash([]);
-      y += 6;
-    }
-
-    // ── HEADER ──
+  function drawTableHeader() {
+    doc.setFillColor(235, 240, 248);
+    doc.rect(lm, y - 10, rm - lm, 16, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
-    doc.text(STALL_NAME, pw / 2, y, { align: 'center' }); y += 20;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(100);
-    doc.text(STALL_ADDRESS, pw / 2, y, { align: 'center' }); y += 13;
-    doc.text('Tel: ' + STALL_PHONE, pw / 2, y, { align: 'center' }); y += 16;
-
-    doc.setTextColor(0);
-    hRule(0.8); y += 2;
-
-    // Bill info row
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RECEIPT', lm, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(billNo, pw / 2, y, { align: 'center' });
-    doc.text(dateStr + '  ' + timeStr, rm, y, { align: 'right' });
-    y += 14;
-
-    dottedRule(); y += 2;
-
-    // ── COLUMN HEADERS ──
-    let col = {
-      item: lm,
-      qty:  lm + cw * 0.52,
-      rate: lm + cw * 0.67,
-      amt:  rm
-    };
-
     doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(80);
-    doc.text('ITEM',         col.item, y);
-    doc.text('QTY',          col.qty,  y);
-    doc.text('UNIT PRICE',   col.rate, y);
-    doc.text('AMOUNT',       col.amt,  y, { align: 'right' });
-    y += 5;
+    doc.setTextColor(60);
+    doc.text('BILL NO.', lm + 4,   y);
+    doc.text('DATE',     lm + 80,  y);
+    doc.text('UNITS',    lm + 260, y);
+    doc.text('AMOUNT',   rm - 4,   y, { align: 'right' });
     doc.setTextColor(0);
-    hRule(0.4); y += 2;
-
-    // ── LINE ITEMS ──
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-
-    cart.forEach(c => {
-      checkPage();
-      let amt = c.price * c.qty;
-      // wrap long names
-      let lines = doc.splitTextToSize(c.name, cw * 0.48);
-      doc.text(lines,              col.item, y);
-      doc.text(String(c.qty),      col.qty,  y);
-      doc.text(c.price.toFixed(2), col.rate, y);
-      doc.text(amt.toFixed(2),     col.amt,  y, { align: 'right' });
-      y += lines.length * 13;
-    });
-
-    y += 4;
-    dottedRule(); y += 4;
-
-    // ── TOTALS BLOCK ──
-    let totLabelX = lm + cw * 0.55;
-    let totValX   = rm;
-
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Subtotal',           totLabelX, y);
-    doc.text(subtotal.toFixed(2),  totValX,   y, { align: 'right' }); y += 14;
-
-    doc.text('Discount',     totLabelX, y);
-    doc.text('0.00',         totValX,   y, { align: 'right' }); y += 14;
-
-    hRule(0.5); y += 2;
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.text('TOTAL (Rs)',        totLabelX, y);
-    doc.text(total.toFixed(2),    totValX,   y, { align: 'right' }); y += 18;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(80);
-
-    // Total items summary
-    let totalUnits = cart.reduce((a, c) => a + c.qty, 0);
-    doc.text('Items sold: ' + cart.length + ' types  |  ' + totalUnits + ' units', lm, y); y += 14;
-
-    doc.setTextColor(0);
-    hRule(0.8); y += 6;
-
-    // ── FOOTER ──
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100);
-    doc.text('Thank you for your purchase!', pw / 2, y, { align: 'center' }); y += 13;
-    doc.text('Please keep this receipt for your records.', pw / 2, y, { align: 'center' }); y += 13;
-    doc.text('- ' + STALL_NAME + ' -', pw / 2, y, { align: 'center' });
-    doc.setTextColor(0);
-
-    // Save record
-    sales.push({
-      billNo,
-      date:       dateStr + ' ' + timeStr,
-      total:      parseFloat(total.toFixed(2)),
-      items:      cart.length,
-      totalUnits: totalUnits
-    });
-    saveStorage();
-    doc.save(billNo + '.pdf');
-
-    cart = [];
-    renderCart();
-    renderProducts(); // refresh stock display
-    renderSales();
-    updateDashboard();
-    showToast('Bill ' + billNo + ' generated.');
+    y += 10;
+    doc.setLineWidth(0.4);
+    doc.line(lm, y, rm, y);
+    y += 8;
   }
 
-  /* ── Sales ── */
-  function renderSales() {
-    let wrap = document.getElementById('salesTableWrap');
-    if (sales.length === 0) {
-      wrap.innerHTML = '<div class="empty-state"><i class="ti ti-chart-bar-off"></i>No sales recorded yet</div>';
-      return;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text('Sales Report', pw / 2, y, { align: 'center' }); y += 18;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  doc.text(STALL_NAME + ' | ' + STALL_ADDRESS, pw / 2, y, { align: 'center' }); y += 13;
+  doc.text('Generated: ' + new Date().toLocaleString('en-LK'), pw / 2, y, { align: 'center' });
+  doc.setTextColor(0); y += 18;
+  doc.setLineWidth(0.8);
+  doc.line(lm, y, rm, y); y += 14;
+  drawTableHeader();
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  let grand = 0, totalUnitsAll = 0;
+  sales.forEach((s, i) => {
+    checkPage();
+    if (i % 2 === 0) {
+      doc.setFillColor(248, 249, 251);
+      doc.rect(lm, y - 9, rm - lm, 16, 'F');
     }
-    let rows = [...sales].reverse().map(s => `
+    doc.setTextColor(0);
+    doc.text(s.billNo,  lm + 4,   y);
+    doc.text(s.date,    lm + 80,  y);
+    doc.text(String(s.totalUnits || s.items || '-'), lm + 260, y);
+    doc.text(s.total.toFixed(2), rm - 4, y, { align: 'right' });
+    grand += s.total;
+    totalUnitsAll += (s.totalUnits || 0);
+    y += 16;
+  });
+
+  y += 4;
+  doc.setLineWidth(0.8);
+  doc.line(lm, y, rm, y); y += 12;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('Grand Total', lm + 4, y);
+  doc.text(String(totalUnitsAll), lm + 260, y);
+  doc.text(grand.toFixed(2), rm - 4, y, { align: 'right' }); y += 18;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(100);
+  doc.text('Total bills: ' + sales.length, lm + 4, y);
+
+  doc.save('sales-report-' + Date.now() + '.pdf');
+  showToast('Sales report downloaded.');
+}
+
+/* ══════════════════════════════════════════════
+   Dashboard
+   ══════════════════════════════════════════════ */
+function updateDashboard() {
+  const sum = sales.reduce((a, b) => a + b.total, 0);
+  document.getElementById('totalSales').textContent = fmtMoney(sum);
+  document.getElementById('totalBills').textContent = sales.length;
+
+  const rb     = document.getElementById('recentBills');
+  const recent = [...sales].reverse().slice(0, 5);
+  if (recent.length === 0) {
+    rb.innerHTML = '<div class="empty-state" style="padding:1rem 0"><i class="ti ti-receipt-off" style="font-size:26px;display:block;margin-bottom:8px;opacity:.4"></i>No bills yet</div>';
+  } else {
+    const rows = recent.map(s => `
       <tr>
         <td style="font-weight:600">${s.billNo}</td>
         <td>${s.date}</td>
-        <td style="text-align:center">${s.totalUnits || s.items || '-'}</td>
         <td style="font-weight:600;color:var(--blue)">${fmtMoney(s.total)}</td>
       </tr>`).join('');
-    wrap.innerHTML = `
+    rb.innerHTML = `
       <table>
-        <thead><tr><th>Bill no.</th><th>Date &amp; time</th><th>Units sold</th><th>Amount</th></tr></thead>
+        <thead><tr><th>Bill no.</th><th>Date</th><th>Total</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
   }
+}
 
-  /* ── Sales report PDF ── */
-  function downloadSalesReport() {
-    if (sales.length === 0) { alert("No sales to export."); return; }
-    const { jsPDF } = window.jspdf;
-    let doc = new jsPDF({ unit: 'pt', format: 'a4' });
-    let pw  = doc.internal.pageSize.getWidth();
-    let ph  = doc.internal.pageSize.getHeight();
-    let lm  = 50, rm = pw - 50;
-    let y   = 60;
+/* ══════════════════════════════════════════════
+   Init — open IndexedDB then load all data
+   ══════════════════════════════════════════════ */
+(async function init() {
+  try {
+    db = await openDB();
+    setDbStatus('ready', '✓ IndexedDB ready — unlimited image storage');
 
-    function checkPage() {
-      if (y > ph - 60) {
-        doc.addPage();
-        y = 60;
-        // repeat column headers
-        drawTableHeader();
-      }
-    }
+    products = await idbGetAll('products');
+    sales    = await idbGetAll('sales');
 
-    function drawTableHeader() {
-      doc.setFillColor(235, 240, 248);
-      doc.rect(lm, y - 10, rm - lm, 16, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8.5);
-      doc.setTextColor(60);
-      doc.text('BILL NO.',  lm + 4,      y);
-      doc.text('DATE',      lm + 80,     y);
-      doc.text('UNITS',     lm + 260,    y);
-      doc.text('AMOUNT',    rm - 4,      y, { align: 'right' });
-      doc.setTextColor(0);
-      y += 10;
-      doc.setLineWidth(0.4);
-      doc.line(lm, y, rm, y);
-      y += 8;
-    }
-
-    // Title
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(18);
-    doc.text('Sales Report', pw / 2, y, { align: 'center' }); y += 18;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(100);
-    doc.text(STALL_NAME + ' | ' + STALL_ADDRESS, pw / 2, y, { align: 'center' }); y += 13;
-    let genDate = new Date().toLocaleString('en-LK');
-    doc.text('Generated: ' + genDate, pw / 2, y, { align: 'center' });
-    doc.setTextColor(0);
-    y += 18;
-
-    doc.setLineWidth(0.8);
-    doc.line(lm, y, rm, y);
-    y += 14;
-
-    drawTableHeader();
-
-    // Rows
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    let grand = 0;
-    let totalUnitsAll = 0;
-    sales.forEach((s, i) => {
-      checkPage();
-      if (i % 2 === 0) {
-        doc.setFillColor(248, 249, 251);
-        doc.rect(lm, y - 9, rm - lm, 16, 'F');
-      }
-      doc.setTextColor(0);
-      doc.text(s.billNo,                    lm + 4,   y);
-      doc.text(s.date,                      lm + 80,  y);
-      doc.text(String(s.totalUnits || s.items || '-'), lm + 260, y);
-      doc.text(s.total.toFixed(2),          rm - 4,   y, { align: 'right' });
-      grand += s.total;
-      totalUnitsAll += (s.totalUnits || 0);
-      y += 16;
-    });
-
-    // Grand total
-    y += 4;
-    doc.setLineWidth(0.8);
-    doc.line(lm, y, rm, y);
-    y += 12;
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.text('Grand Total', lm + 4, y);
-    doc.text(String(totalUnitsAll), lm + 260, y);
-    doc.text(grand.toFixed(2), rm - 4, y, { align: 'right' });
-    y += 18;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(100);
-    doc.text('Total bills: ' + sales.length, lm + 4, y);
-
-    doc.save('sales-report-' + Date.now() + '.pdf');
-    showToast('Sales report downloaded.');
+    renderProducts();
+    renderSales();
+    updateDashboard();
+  } catch (err) {
+    console.error('IndexedDB error:', err);
+    setDbStatus('error', '✗ Database error: ' + err.message);
+    // Fallback: start with empty arrays
+    renderProducts();
+    renderSales();
+    updateDashboard();
   }
-
-  /* ── Dashboard ── */
-  function updateDashboard() {
-    let sum = sales.reduce((a, b) => a + b.total, 0);
-    document.getElementById('totalSales').textContent = fmtMoney(sum);
-    document.getElementById('totalBills').textContent = sales.length;
-
-    let rb     = document.getElementById('recentBills');
-    let recent = [...sales].reverse().slice(0, 5);
-    if (recent.length === 0) {
-      rb.innerHTML = '<div class="empty-state" style="padding:1rem 0"><i class="ti ti-receipt-off" style="font-size:26px;display:block;margin-bottom:8px;opacity:.4"></i>No bills yet</div>';
-    } else {
-      let rows = recent.map(s => `
-        <tr>
-          <td style="font-weight:600">${s.billNo}</td>
-          <td>${s.date}</td>
-          <td style="font-weight:600;color:var(--blue)">${fmtMoney(s.total)}</td>
-        </tr>`).join('');
-      rb.innerHTML = `
-        <table>
-          <thead><tr><th>Bill no.</th><th>Date</th><th>Total</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
-    }
-  }
-
-  /* ── Init ── */
-  renderProducts();
-  renderSales();
-  updateDashboard();
+})();
 </script>
 </body>
 </html>
