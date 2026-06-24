@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Multi-Stall University Event POS</title>
+<style>
+:root{--bg:#f5f7fb;--card:rgba(255,255,255,.7);--text:#222;--accent:#4f46e5}
+body.dark{--bg:#0f172a;--card:rgba(30,41,59,.75);--text:#fff}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+.glass{backdrop-filter:blur(12px);background:var(--card);border:1px solid rgba(255,255,255,.2);border-radius:16px}
+nav{display:flex;gap:10px;flex-wrap:wrap;padding:10px;position:sticky;top:0}
+button,input,select{padding:10px;border-radius:10px;border:1px solid #ccc}
+.page{display:none;padding:15px}.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.card{padding:15px}
+.product-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.product{padding:10px}
+img{max-width:100%;height:120px;object-fit:cover;border-radius:10px}
+table{width:100%;border-collapse:collapse}td,th{border:1px solid #ccc;padding:6px}
+</style>
+</head>
+<body>
+<div id="setup" class="page active">
+<h2>Setup Wizard</h2>
+<input id="stallName" placeholder="Stall Name"><br><br>
+<input id="ownerName" placeholder="Owner Name"><br><br>
+<input id="stallNo" placeholder="Stall Number"><br><br>
+<input id="uniName" placeholder="University Name"><br><br>
+<input id="currency" placeholder="Currency" value="LKR"><br><br>
+<button onclick="saveSetup()">Save</button>
+</div>
+
+<div id="app" style="display:none">
+<nav class="glass">
+<button onclick="showPage('dashboard')">Dashboard</button>
+<button onclick="showPage('products')">Products</button>
+<button onclick="showPage('pos')">POS</button>
+<button onclick="showPage('sales')">Sales</button>
+<button onclick="showPage('settings')">Settings</button>
+<button onclick="toggleTheme()">Theme</button>
+</nav>
+
+<div id="dashboard" class="page">
+<h2>Dashboard</h2>
+<div class="cards" id="stats"></div>
+</div>
+
+<div id="products" class="page">
+<h2>Products</h2>
+<input id="pname" placeholder="Name">
+<input id="pcat" placeholder="Category">
+<input id="pprice" type="number" placeholder="Price">
+<input id="pqty" type="number" placeholder="Qty">
+<input id="pimg" type="file">
+<button onclick="addProduct()">Add Product</button>
+<div id="plist" class="product-grid"></div>
+</div>
+
+<div id="pos" class="page">
+<h2>POS</h2>
+<div id="posProducts" class="product-grid"></div>
+<h3>Cart</h3>
+<div id="cart"></div>
+<input id="customer" placeholder="Customer Name">
+<input id="cash" type="number" placeholder="Cash Received">
+<button onclick="checkout()">Checkout</button>
+</div>
+
+<div id="sales" class="page">
+<h2>Sales</h2>
+<button onclick="exportCSV()">Export CSV</button>
+<table><thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Total</th></tr></thead><tbody id="salesBody"></tbody></table>
+</div>
+
+<div id="settings" class="page">
+<h2>Settings</h2>
+<button onclick="exportBackup()">Export Backup</button>
+<input type="file" onchange="importBackup(event)">
+</div>
+</div>
+
+<script>
+let products=JSON.parse(localStorage.getItem('products')||'[]');
+let sales=JSON.parse(localStorage.getItem('sales')||'[]');
+let cart=[];
+
+function saveSetup(){
+const data={stallName:stallName.value,ownerName:ownerName.value,stallNo:stallNo.value,uniName:uniName.value,currency:currency.value};
+localStorage.setItem('stallInfo',JSON.stringify(data));
+init();
+}
+function init(){
+if(!localStorage.getItem('stallInfo')) return;
+setup.style.display='none';app.style.display='block';
+showPage('dashboard');
+renderAll();
+if(localStorage.getItem('theme')==='dark')document.body.classList.add('dark');
+}
+function showPage(id){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function persist(){localStorage.setItem('products',JSON.stringify(products));localStorage.setItem('sales',JSON.stringify(sales));}
+function addProduct(){
+const f=pimg.files[0];
+const r=new FileReader();
+r.onload=()=>{products.push({id:Date.now(),name:pname.value,cat:pcat.value,price:+pprice.value,qty:+pqty.value,img:r.result});persist();renderAll();};
+if(f)r.readAsDataURL(f); else {products.push({id:Date.now(),name:pname.value,cat:pcat.value,price:+pprice.value,qty:+pqty.value,img:''});persist();renderAll();}
+}
+function renderProducts(){
+plist.innerHTML='';
+products.forEach(p=>{
+plist.innerHTML+=`<div class="product glass"><img src="${p.img||''}"><h4>${p.name}</h4><p>${p.cat}</p><p>${p.price}</p><p>Stock:${p.qty}</p><button onclick="delProd(${p.id})">Delete</button></div>`;
+});
+}
+function delProd(id){products=products.filter(x=>x.id!=id);persist();renderAll();}
+function renderPOS(){
+posProducts.innerHTML='';
+products.forEach(p=>posProducts.innerHTML+=`<div class="product glass"><h4>${p.name}</h4><button onclick="addCart(${p.id})">Add</button></div>`);
+renderCart();
+}
+function addCart(id){
+const p=products.find(x=>x.id==id);
+let c=cart.find(x=>x.id==id);
+if(c)c.qty++; else cart.push({...p,qty:1});
+renderCart();
+}
+function renderCart(){
+cart.innerHTML='';
+let total=0;
+document.getElementById('cart').innerHTML=cart.map(c=>{total+=c.qty*c.price;return `${c.name} x ${c.qty} = ${c.qty*c.price}<br>`}).join('')+`<h3>Total:${total}</h3>`;
+}
+function checkout(){
+let total=cart.reduce((a,b)=>a+b.qty*b.price,0);
+for(let c of cart){let p=products.find(x=>x.id==c.id); if(p.qty<c.qty){alert('Insufficient stock');return;}}
+cart.forEach(c=>products.find(x=>x.id==c.id).qty-=c.qty);
+const inv='INV-'+String(sales.length+1).padStart(6,'0');
+sales.push({invoice:inv,date:new Date().toLocaleString(),customer:customer.value,total,items:cart});
+persist(); cart=[]; renderAll(); alert('Sale Complete '+inv);
+}
+function renderSales(){
+salesBody.innerHTML=sales.map(s=>`<tr><td>${s.invoice}</td><td>${s.date}</td><td>${s.customer}</td><td>${s.total}</td></tr>`).join('');
+}
+function renderDashboard(){
+const rev=sales.reduce((a,b)=>a+b.total,0);
+stats.innerHTML=`
+<div class="card glass">Revenue<br>${rev}</div>
+<div class="card glass">Bills<br>${sales.length}</div>
+<div class="card glass">Products<br>${products.length}</div>`;
+}
+function renderAll(){renderProducts();renderPOS();renderSales();renderDashboard();}
+function toggleTheme(){document.body.classList.toggle('dark');localStorage.setItem('theme',document.body.classList.contains('dark')?'dark':'light');}
+function exportCSV(){
+let csv='Invoice,Date,Customer,Total\n'+sales.map(s=>`${s.invoice},${s.date},${s.customer},${s.total}`).join('\n');
+let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv]));a.download='sales.csv';a.click();
+}
+function exportBackup(){
+let data={stallInfo:JSON.parse(localStorage.getItem('stallInfo')),products,sales};
+let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data)]));a.download='backup.json';a.click();
+}
+function importBackup(e){
+let f=e.target.files[0]; let r=new FileReader();
+r.onload=()=>{let d=JSON.parse(r.result);localStorage.setItem('stallInfo',JSON.stringify(d.stallInfo));products=d.products||[];sales=d.sales||[];persist();renderAll();};
+r.readAsText(f);
+}
+init();
+</script>
+</body>
+</html>
