@@ -60,7 +60,7 @@ University-Stall-POS/
 ```
 
 ---
-## Live Demo 
+## 🌐 Live Demo 
 
 Click Here: https://danu-codes.github.io/stall-pos/
 
