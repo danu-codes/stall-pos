@@ -132,21 +132,6 @@ The application can generate a PDF report containing:
 
 ---
 
-## 📷 Screenshots
-
-```
-
-Dashboard
-
-Products
-
-Billing
-
-Reports
-
-```
-
----
 
 ## 🌟 Future Improvements
 
