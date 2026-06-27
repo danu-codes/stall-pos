@@ -170,4 +170,4 @@ This project is released under the MIT License.
 
 Developed by **DANUSHAN**
 
-GitHub: https://github.com/yourusername
+GitHub: https://github.com/danu-codes
