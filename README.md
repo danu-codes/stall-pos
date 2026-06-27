@@ -59,7 +59,10 @@ University-Stall-POS/
 
 ```
 
-*(If everything is inside a single HTML file, only `index.html` is required.)*
+---
+## Live Demo 
+
+Click Here: https://danu-codes.github.io/stall-pos/
 
 ---
 
