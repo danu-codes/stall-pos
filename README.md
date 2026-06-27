@@ -135,10 +135,15 @@ The application can generate a PDF report containing:
 ## 📷 Screenshots
 
 ```
-dashboard
-products
-billing
-reports
+
+Dashboard
+
+Products
+
+Billing
+
+Reports
+
 ```
 
 ---
