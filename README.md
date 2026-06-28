@@ -135,7 +135,18 @@ The application can generate a PDF report containing:
 
 ---
 
+## 📷 Screenshots
 
+<img width="1080" height="1800" alt="Screenshot_20260627_112045_Brave" src="https://github.com/user-attachments/assets/9b261f6c-a1d0-4cfd-bd63-2ed5d8f39755" />
+
+<img width="1080" height="2076" alt="Screenshot_20260627_112100_Brave" src="https://github.com/user-attachments/assets/b344190a-b0ee-48a6-98c7-d37b4508b330" />
+
+<img width="1080" height="2077" alt="Screenshot_20260627_112110_Brave" src="https://github.com/user-attachments/assets/fc0ba3af-3ab6-4b17-8a6c-c15ffd7b1f36" />
+
+<img width="1080" height="1800" alt="Screenshot_20260627_112116_Brave" src="https://github.com/user-attachments/assets/1f0a1f89-d49f-4fb2-b249-6d284f596917" />
+
+
+---
 ## 🌟 Future Improvements
 
 - Product Categories
