@@ -143,8 +143,7 @@ The application can generate a PDF report containing:
 
 <img width="1080" height="2077" alt="image" src="https://github.com/user-attachments/assets/aa5e0509-6414-4a5b-8493-5931b40b12f2" />
 
-![Uploading image.png…]()
-
+<img width="1080" height="1800" alt="image" src="https://github.com/user-attachments/assets/373e055c-a00a-449d-8f86-2af88d6352ce" />
 
 ---
 
